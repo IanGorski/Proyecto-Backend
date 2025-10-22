@@ -1,4 +1,3 @@
-
 export class CustomError extends Error{
     constructor(message, status){
         super(message)
@@ -25,7 +24,6 @@ export class CustomError extends Error{
 
 /* ejecutarSuma() */
 
-
 const manejarError = (accionCallback) =>{
     try{
         accionCallback()
@@ -39,11 +37,6 @@ const manejarError = (accionCallback) =>{
         }
     }
 }
-
-manejarError(() =>{ sumar(2) })
-
-manejarError(() =>{ sakldhsudosadoas })
-
 
 export class ServerError extends Error{
     constructor(status, message){
