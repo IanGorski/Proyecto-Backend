@@ -80,6 +80,47 @@ class WorkspaceController {
             }
         }
     }
+
+    static async invite (request, response){
+        try{
+            const user = request.user
+            const { workspace_id } = request.params
+            const { email_invited, invited_role } = request.body
+
+            const result = await WorkspaceService.inviteUserToWorkspace(
+                email_invited, 
+                workspace_id, 
+                user.id, 
+                invited_role
+            )
+
+            response.status(200).json({
+                ok: true,
+                status: 200,
+                message: result.message,
+                data: {
+                    token: result.token
+                }
+            })
+        }
+        catch(error){
+            if(error.status){
+                return response.status(error.status).json({
+                    ok: false,
+                    message: error.message,
+                    status: error.status
+                })
+            }
+            else{
+                console.error('ERROR AL INVITAR USUARIO', error)
+                return response.status(500).json({
+                    ok: false,
+                    message: 'Error interno del servidor',
+                    status: 500
+                })
+            }
+        }
+    }
 }
 
 export default WorkspaceController
