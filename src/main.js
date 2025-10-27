@@ -16,6 +16,15 @@ app.use( cors() )
 
 app.use(express.json())
 
+// Ruta raíz para verificar que el servidor está funcionando
+app.get('/', (req, res) => {
+    res.json({
+        ok: true,
+        message: 'Backend funcionando correctamente',
+        version: '2.0.0'
+    });
+});
+
 // Middleware para manejar errores y devolver respuestas JSON
 app.use((err, req, res, next) => {
     res.status(err.status || 500).json({
