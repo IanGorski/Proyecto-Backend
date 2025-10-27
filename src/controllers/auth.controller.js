@@ -41,9 +41,11 @@ class AuthController {
             const {verification_token} = request.params
 
             await AuthService.verifyEmail(verification_token)
-            response.redirect(
-                ENVIRONMENT.URL_FRONTEND + '/login?from=verified_email'
-            )
+            const frontendUrl = process.env.NODE_ENV === 'production' 
+                ? process.env.URL_FRONTEND_DEPLOYED 
+                : process.env.URL_FRONTEND;
+
+            response.redirect(`${frontendUrl}/login?from=verified_email`)
         }
         catch(error){
 
