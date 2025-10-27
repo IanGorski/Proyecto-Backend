@@ -16,6 +16,14 @@ app.use( cors() )
 
 app.use(express.json())
 
+// Middleware para manejar errores y devolver respuestas JSON
+app.use((err, req, res, next) => {
+    res.status(err.status || 500).json({
+        ok: false,
+        message: err.message || 'Error interno del servidor',
+    });
+});
+
 //Todas las consultas que empiezen con /api/auth va a ser gestionadas por el authRouter
 app.use('/api/auth', authRouter)
 app.use('/api/workspace', workspaceRouter)
