@@ -1,5 +1,12 @@
+import ENVIRONMENT from "../config/environment.config.js"
+import mailTransporter from "../config/mailTransporter.config.js"
+import { ServerError } from "../error.js"
+import MemberWorkspaceRepository from "../repositories/memberWorkspace.repository.js"
+import UserRepository from "../repositories/user.repository.js"
 import WorkspaceRepository from "../repositories/workspace.repository.js"
 import WorkspaceService from "../services/workspace.service.js"
+import ChannelService from "../services/channelService.js";
+import jwt from 'jsonwebtoken'
 
 class WorkspaceController {
     static async getAll (request, response){
@@ -81,38 +88,53 @@ class WorkspaceController {
         }
     }
 
-    static async invite (request, response){
+    static async invite(request, response){
         try{
-            const user = request.user
-            const { workspace_id } = request.params
-            const { email_invited, invited_role } = request.body
-
-            const result = await WorkspaceService.inviteUserToWorkspace(
-                email_invited, 
-                workspace_id, 
-                user.id, 
-                invited_role
-            )
-
-            response.status(200).json({
-                ok: true,
+            const {member, workspace_selected, user} = request
+            const {email_invited, role_invited} = request.body
+           
+            await WorkspaceService.invite(member, workspace_selected, email_invited, role_invited)
+            response.json({
                 status: 200,
-                message: result.message,
-                data: {
-                    token: result.token
-                }
+                message: 'Invitacion enviada',
+                ok: true
             })
+            /* 
+                - Verificar que exista un usuario (EN LA DB) con el email_invited
+                    Por?: Hay que checkear que el usuario invitado existe
+                    EJEMPLO: Los invito a un grupo de wsp y ustedes no tienen wsp
+                    Sino existe tirar error 404
+                
+                - Verificar que YA NO ESTE en el workspace, sino seria un miembro duplicado
+
+                - Generar un token con: 
+                {
+                    id_invited,
+                    id_inviter,
+                    id_workspace,
+                    invited_role
+                }
+                
+                - Enviar el mail de invitacion
+                    Ejemplo: 
+                        `
+                        <h1>Has sido invitado al workspace: ${workspace_select.name}</h1>
+                        <a href="${URL_FRONTEND}/api/member/confirm/${invite_token}"">Aceptar</a>
+                        `
+            */
         }
-        catch(error){
+         catch(error){
             if(error.status){
                 return response.status(error.status).json({
-                    ok: false,
+                    ok:false,
                     message: error.message,
                     status: error.status
                 })
             }
             else{
-                console.error('ERROR AL INVITAR USUARIO', error)
+                console.error(
+                    'ERROR AL invitar', error
+                )
                 return response.status(500).json({
                     ok: false,
                     message: 'Error interno del servidor',
@@ -121,6 +143,146 @@ class WorkspaceController {
             }
         }
     }
+
+    static async getById(request, response) {
+        try {
+            const { workspace_selected, member } = request;
+
+            // Cargar la lista de canales del workspace usando el servicio
+            const channels = await WorkspaceService.getAllByWorkspaceId(workspace_selected.id);
+
+            response.status(200).json({
+                ok: true,
+                workspace: workspace_selected,
+                member,
+                channels,
+                totalChannels: channels.length,
+            });
+        } catch (error) {
+            console.error('Error al obtener detalles del workspace:', error);
+            response.status(500).json({
+                ok: false,
+                message: 'Error interno del servidor',
+            });
+        }
+    }
+
+
+
+    static async getWorkspaceId(request, response) {
+        try {
+            const { workspace_id } = request.params;
+
+            // Validar workspace
+            if (!workspace_id) {
+                return response.status(400).json({
+                    ok: false,
+                    message: 'workspace_id es requerido',
+                });
+            }
+
+            // Obtener detalles del espacio de trabajo
+            const workspaceDetails = await ChannelService.getWorkspaceId(workspace_id);
+
+            // Obtener lista de canales del espacio de trabajo
+            const channels = await ChannelService.getChannelsByWorkspaceId(workspace_id);
+
+            // Validar que el espacio de trabajo exista
+            if (!workspaceDetails) {
+                return response.status(404).json({
+                    ok: false,
+                    message: 'Espacio de trabajo no encontrado',
+                });
+            }
+
+            response.status(200).json({
+                ok: true,
+                workspace: workspaceDetails,
+                channels,
+                totalChannels: channels.length, 
+            });
+        } catch (error) {
+            console.error(`Error al obtener detalles del espacio de trabajo (${workspace_id}):`, error);
+            response.status(500).json({
+                ok: false,
+                message: 'Error interno del servidor',
+            });
+        }
+    }
+
+    
+// POST /workspaces/:workspace_id/channels (Solo admins)
+/* 
+body: {
+    name
 }
+- Crear un nuevo canal
+*/
+/*     static async createChannel(request, response) {
+        try {
+            const { workspace_selected } = request;
+            const { name } = request.body;
+
+            // Validar nombre de canal ok
+            if (!name) {
+                return response.status(400).json({
+                    ok: false,
+                    message: 'El nombre del canal es requerido',
+                });
+            }
+
+            // Crear el canal usando .createChannel
+            const newChannel = await channel.service.createChannel(workspace_selected.id, name);
+
+            response.status(201).json({
+                ok: true,
+                message: 'Canal creado',
+                channel: newChannel,
+            });
+        } catch (error) {
+            console.error('Error al crear:', error);
+            response.status(500).json({
+                ok: false,
+                message: 'Error interno del servidor',
+            });
+        }
+    }
+    } */
+    
+    
+} 
 
 export default WorkspaceController
+
+
+
+
+    // GET /workspaces/:workspace_id
+    /* 
+    - Obtener los detalles de un espacio de trabajo
+    - Cargar la lista de canales de un espacio de trabajo
+    */
+
+/*static async getById(request, response) {
+    try {
+        const { workspace_selected, member } = request;
+
+        // lista
+        const channels = await WorkspaceService.getAllByWorkspaceId(workspace_selected.id);
+
+        response.status(200).json({
+            ok: true,
+            workspace: workspace_selected,
+            member,
+            channels,
+            totalChannels: channels.length,
+        });
+    } catch (error) {
+        console.error('Error al obtener detalles del workspace:', error);
+        response.status(500).json({
+            ok: false,
+            message: 'Error interno del servidor',
+        });
+    }
+} 
+*/
